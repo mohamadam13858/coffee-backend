@@ -23,6 +23,9 @@ export class User {
     lastName: string
     @Column({ default: true })
     isActive: boolean
+    @Column({ type: 'text', nullable: true, default: null })
+    @Exclude()
+    refreshToken: string | null;
     @CreateDateColumn()
     createdAt: Date
     @UpdateDateColumn()

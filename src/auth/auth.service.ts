@@ -8,13 +8,15 @@ import { Role } from '../users/enums/role.enum';
 import { LoginDto } from './dto/login.dto';
 import { jwtPayload } from './jwt-payload-interface';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
-        private jwtService: JwtService
+        private jwtService: JwtService,
+        private configService: ConfigService
     ) { }
 
 
@@ -51,16 +53,79 @@ export class AuthService {
 
 
 
-    async login(loginDto: LoginDto): Promise<{ accessToken: string }> {
+    async login(loginDto: LoginDto): Promise<{ accessToken: string; refreshToken: string }> {
         const { mobile, password } = loginDto
         const user = await this.userRepository.findOne({ where: { mobile } })
 
         if (user && (await bcrypt.compare(password, user.password))) {
             const payload: jwtPayload = { id: user.id, mobile: user.mobile, role: user.role }
-            const accessToken: string = await this.jwtService.sign(payload)
-            return { accessToken }
+            const accessToken = await this.jwtService.signAsync(payload, {
+                secret: this.configService.get('JWT_SECRET'),
+                expiresIn: '15m',
+            });
+
+            const refreshToken = await this.jwtService.signAsync(payload, {
+                secret: this.configService.get('JWT_REFRESH_SECRET'),
+                expiresIn: '7d',
+            });
+
+
+            const hashedRefreshToken = await bcrypt.hash(refreshToken, 10)
+
+            await this.userRepository.update(user.id, {
+                refreshToken: hashedRefreshToken
+            })
+
+            return {
+                accessToken,
+                refreshToken
+            }
         } else {
             throw new UnauthorizedException('رمز عبور یا موبایل اشتباه است لطفا مجدد تلاش کنید')
         }
+    }ؤ
+
+
+    async refresh(refreshToken: string) {
+        let payload
+
+        try {
+            payload = await this.jwtService.verifyAsync(refreshToken, {
+                secret: this.configService.get('JWT_REFRESH_SECRET')
+            })
+        } catch {
+            throw new UnauthorizedException('رفرش توکن نامعتبر است')
+        }
+        const user = await this.userRepository.findOne({
+            where: { id: payload.id }
+        })
+
+        if (!user || !user.refreshToken) {
+            throw new UnauthorizedException('دسترسی غیر مجاز')
+        }
+
+        const isMatch = await bcrypt.compare(refreshToken, user.refreshToken)
+        if (!isMatch) {
+            throw new UnauthorizedException('رفرش توکن نامعتبر است ')
+        }
+
+        const newPayload = {
+            id: user.id,
+            mobile: user.mobile,
+            role: user.role
+        }
+
+        const accessToken = await this.jwtService.signAsync(newPayload, {
+            secret: this.configService.get('JWT_SECRET'),
+            expiresIn: '15m',
+        });
+
+        return { accessToken }
+    }
+
+
+    async logout(userId: string) {
+        await this.userRepository.update(userId, { refreshToken: null });
+        return { message: 'با موفقیت خارج شدید' };
     }
 }

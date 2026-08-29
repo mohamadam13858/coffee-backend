@@ -6,6 +6,7 @@ import { User } from "../users/entities/user.entity";
 import { Repository } from "typeorm";
 import { jwtPayload } from "./jwt-payload-interface";
 import { ConfigService } from "@nestjs/config";
+import { Request } from "express";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -16,7 +17,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     ) {
         super({
             secretOrKey: configService.get('JWT_SECRET')!,
-            jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken()
+            jwtFromRequest: ExtractJwt.fromExtractors([
+                ExtractJwt.fromAuthHeaderAsBearerToken() , 
+                (req) => {
+                    if (req && req.cookies) {
+                        return req.cookies['access_token'] || null;
+                    }
+                    return null
+                }
+            ])
         })
     }
 

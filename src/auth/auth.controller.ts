@@ -6,19 +6,24 @@ import type { Request, Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from './get-user.decorator';
 import { User } from 'src/users/entities/user.entity';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
+
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
 
 
   @Post('signup')
+  @ApiOperation({summary: 'ثبت نام کابر جدید'})
   signup(@Body() registerDto: RegisterDto): Promise<void> {
     return this.authService.register(registerDto)
   }
 
 
   @Post('signin')
+  @ApiOperation({summary: 'ورود کاربر و دریافت توکن'})
   async signin(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(loginDto)
     res.cookie('access_token', result.accessToken, {
@@ -40,6 +45,7 @@ export class AuthController {
 
 
   @Post('refresh')
+  @ApiOperation({summary:'دریافت accessToken با استفاده از refreshToken'})
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
@@ -64,6 +70,8 @@ export class AuthController {
   }
 
   @Post('logout')
+  @ApiBearerAuth('access_token')
+  @ApiOperation({summary: 'باطل کردن refreshToken و خروج کاربر'})
   @UseGuards(AuthGuard('jwt'))
   async logout(
     @GetUser() user: User,

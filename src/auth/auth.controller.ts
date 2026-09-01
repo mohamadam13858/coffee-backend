@@ -66,6 +66,13 @@ export class AuthController {
       maxAge: 15 * 60 * 1000,
     });
 
+    res.cookie('refresh_token' , result.refreshToken , {
+      httpOnly: true , 
+      secure: process.env.NODE_ENV === 'production' , 
+      sameSite: 'lax' , 
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    })
+
     return result;
   }
 

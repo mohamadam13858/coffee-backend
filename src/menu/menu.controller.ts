@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { GetProductsFilterDto } from './dto/get-products-filter.dto';
 import { Product } from './entities/product.entity';
@@ -21,10 +21,18 @@ export class MenuController {
     constructor(private menuService: MenuService) { }
 
     @Post('categories')
-    @UseInterceptors(FileInterceptor('image' , {
-        storage: memoryStorage() , 
+    @UseInterceptors(FileInterceptor('image', {
+        storage: memoryStorage(),
         limits: {
             fileSize: 5 * 1024 * 1024
+        },
+        fileFilter: (req, file, callback) => {
+            const allowedMImeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg']
+            if (!allowedMImeTypes.includes(file.mimetype)) {
+                return callback(new BadRequestException('فقط فایل های jpg png webp jpeg مجاز است '), false)
+            }
+
+            callback(null, true)
         }
     }))
     @Roles('admin')
@@ -63,8 +71,8 @@ export class MenuController {
     }
 
     @Post('product')
-    @UseInterceptors(FileInterceptor('image' , {
-        storage: memoryStorage() , 
+    @UseInterceptors(FileInterceptor('image', {
+        storage: memoryStorage(),
         limits: {
             fileSize: 5 * 1024 * 1024
         }

@@ -36,12 +36,11 @@ export class TableBrieDto {
     @Expose()
     id: string
 
-
     @Expose()
     number: number
 
     @Expose()
-    stutus: string
+    status: string
 }
 
 
@@ -53,10 +52,10 @@ export class OrderResponseDto {
     status: string
 
     @Expose()
-    totalPrice: number
+    totalAmount: number
 
     @Expose()
-    discountPrice: number
+    discountAmount: number
 
     @Expose()
     finalAmount: number

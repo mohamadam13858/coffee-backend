@@ -106,6 +106,7 @@ export class AuthService {
 
         const isMatch = await bcrypt.compare(refreshToken, user.refreshToken)
         if (!isMatch) {
+            await this.userRepository.update(user.id, { refreshToken: null })
             throw new UnauthorizedException('رفرش توکن نامعتبر است ')
         }
 
@@ -120,7 +121,19 @@ export class AuthService {
             expiresIn: '15m',
         });
 
-        return { accessToken }
+        const newRefreshToken = await this.jwtService.signAsync(newPayload, {
+            secret: this.configService.get('JWT_REFRESH_SECRET'),
+            expiresIn: '7d',
+        })
+
+        const hashedRefreshToken = await bcrypt.hash(newRefreshToken , 10)
+
+
+        await this.userRepository.update(user.id , {
+            refreshToken: hashedRefreshToken
+        })
+
+        return { accessToken, refreshToken: newRefreshToken }
     }
 
 

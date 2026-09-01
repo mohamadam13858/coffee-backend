@@ -17,7 +17,7 @@ import { configValidationSchema } from './config.Schema';
 
 @Module({
   imports: [ConfigModule.forRoot({
-    envFilePath: [`.env.stage.${process.env.STAGE}`], 
+    envFilePath: [`.env.stage.${process.env.STAGE}`],
     validationSchema: configValidationSchema
   }),
   TypeOrmModule.forRootAsync({
@@ -26,7 +26,7 @@ import { configValidationSchema } from './config.Schema';
     useFactory: async (configService: ConfigService) => ({
       type: 'postgres',
       autoLoadEntities: true,
-      synchronize: true,
+      synchronize: configService.get('STAGE') === 'dev',
       host: configService.get('DB_HOST'),
       port: configService.get('DB_PORT'),
       username: configService.get('DB_USERNAME'),

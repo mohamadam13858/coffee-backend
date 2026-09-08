@@ -63,40 +63,64 @@ The main focus is on clean architecture, business logic correctness, and safe co
 
 ## Project Structure
 
-```text
-src/
-├── auth/
-├── users/
-├── menu/
-├── table/
-├── orders/
-├── payments/
-└── common/
-
+    src/
+    ├── auth/
+    ├── users/
+    ├── menu/
+    ├── table/
+    ├── orders/
+    ├── payments/
+    └── common/
 
 ## Getting Started
 
 ### 1. Install dependencies
 
-```bash
-npm install
+    npm install
 
+### 2. Environment variables
 
+Create a `.env` file in the root directory:
 
-npm run start:dev
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_USERNAME=postgres
+    DB_PASSWORD=postgres
+    DB_DATABASE=coffe
+    JWT_SECRET=your_access_secret
+    JWT_REFRESH_SECRET=your_refresh_secret
+    PORT=3000
+    NODE_ENV=development
 
+### 3. Run the project
 
-http://localhost:3000/api-docs
+    npm run start:dev
 
+### 4. Swagger documentation
 
-Security Highlights
+    http://localhost:3000/api-docs
 
-Passwords hashed with bcrypt
-Refresh tokens stored hashed in database
-Short-lived access tokens
-Refresh token rotation
-Role guards for protected routes
-Input validation with DTOs
+## Main API Modules
 
-Author
-Mohammad Habibi
+| Module | Description |
+|--------|-------------|
+| Auth | Signup, signin, refresh, logout |
+| Users | User profile and admin management |
+| Menu | Categories and products |
+| Tables | Cafe table management |
+| Orders | Order lifecycle and items |
+| Payments | Payment tracking and summary |
+
+## Security Highlights
+
+- Passwords hashed with bcrypt
+- Refresh tokens stored hashed in database
+- Short-lived access tokens
+- Refresh token rotation
+- Role guards for protected routes
+- Input validation with DTOs
+
+## Author
+
+**Mohammad Habibi**  
+Backend Developer

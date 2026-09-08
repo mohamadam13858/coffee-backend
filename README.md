@@ -72,3 +72,31 @@ src/
 ├── orders/
 ├── payments/
 └── common/
+
+
+## Getting Started
+
+### 1. Install dependencies
+
+```bash
+npm install
+
+
+
+npm run start:dev
+
+
+http://localhost:3000/api-docs
+
+
+Security Highlights
+
+Passwords hashed with bcrypt
+Refresh tokens stored hashed in database
+Short-lived access tokens
+Refresh token rotation
+Role guards for protected routes
+Input validation with DTOs
+
+Author
+Mohammad Habibi

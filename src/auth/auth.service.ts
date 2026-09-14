@@ -126,10 +126,10 @@ export class AuthService {
             expiresIn: '7d',
         })
 
-        const hashedRefreshToken = await bcrypt.hash(newRefreshToken , 10)
+        const hashedRefreshToken = await bcrypt.hash(newRefreshToken, 10)
 
 
-        await this.userRepository.update(user.id , {
+        await this.userRepository.update(user.id, {
             refreshToken: hashedRefreshToken
         })
 
@@ -137,8 +137,27 @@ export class AuthService {
     }
 
 
-    async logout(userId: string) {
-        await this.userRepository.update(userId, { refreshToken: null });
-        return { message: 'با موفقیت خارج شدید' };
+    async logout(refreshToken: string) {
+        try {
+            const payload = await this.jwtService.verifyAsync(refreshToken, {
+                secret: this.configService.get("JWT_REFRESH_SECRET"),
+            });
+
+            const user = await this.userRepository.findOne({
+                where: { id: payload.id },
+            });
+
+            if (user) {
+                await this.userRepository.update(user.id, {
+                    refreshToken: null,
+                });
+            }
+        } catch (err) {
+          console.log(err)
+        }
+
+        return {
+            message: "با موفقیت خارج شدید",
+        };
     }
 }

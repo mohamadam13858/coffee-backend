@@ -24,18 +24,25 @@ export class UsersController {
         return this.usersService.getAllUsers(filterDto)
     }
 
+
+
+    @Get('/me')
+    getMe(@GetUser() user: User) {
+        return this.usersService.getMe(user.id);
+    }
+
+
+    @Patch('/me')
+    updateProfile(@GetUser() user: User, @Body() updateProfileDto: UpdateProfileDto): Promise<UserResponseDto> {
+        return this.usersService.updateProfile(user.id, updateProfileDto)
+    }
+
+
     @Get(':id')
     @Roles('admin')
     getUser(@Param('id') id: string): Promise<UserResponseDto> {
         return this.usersService.getUser(id)
     }
-
-
-    @Get('me')
-    getMe(@GetUser() user: User) {
-        return this.usersService.getMe(user.id);
-    }
-
 
     @Patch(':id/role')
     @Roles('admin')
@@ -50,11 +57,6 @@ export class UsersController {
         return this.usersService.changeStatus(id, blockUserDto, user)
     }
 
-
-    @Patch('me')
-    updateProfile(@GetUser() user: User, @Body() updateProfileDto: UpdateProfileDto): Promise<UserResponseDto> {
-        return this.usersService.updateProfile(user.id, updateProfileDto)
-    }
 
     @Delete(':id')
     @Roles('admin')

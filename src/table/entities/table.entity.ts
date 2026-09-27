@@ -13,14 +13,18 @@ export class Table {
     status: TableStatus
     @Column({ nullable: true })
     capacity?: number
+    @Column({ type: 'timestamptz', nullable: true })
+    reservedUntil: Date | null
+    @Column({ nullable: true })
+    reservedByUserId: string | null
     @Column({ default: true })
     isActive: boolean
     @OneToMany(() => Order, (order) => order.table)
     orders: Order[]
     @CreateDateColumn()
-    createdAt: Date 
+    createdAt: Date
     @UpdateDateColumn()
     updatedAt: Date
     @DeleteDateColumn()
-    deletedAt: Date     
+    deletedAt: Date
 }

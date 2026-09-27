@@ -8,10 +8,10 @@ import { Table } from './entities/table.entity';
 import { UpdateTableDto } from './dto/update-table.dto';
 import { ChangeStatusTableDto } from './dto/change-status-table.dto';
 
-@Controller('table')  
+@Controller('table')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TableController {
-    constructor(private tableService: TableService) {}
+    constructor(private tableService: TableService) { }
 
     @Post()
     @Roles('admin')
@@ -25,7 +25,7 @@ export class TableController {
     }
 
     @Get('available')
-    findAvailable():Promise<Table[]> {
+    findAvailable(): Promise<Table[]> {
         return this.tableService.findAvailable();
     }
 
@@ -45,6 +45,7 @@ export class TableController {
 
 
     @Patch(':id/status')
+    @Roles('admin')
     changeStatus(
         @Param('id') id: string,
         @Body() changeStatusTableDto: ChangeStatusTableDto

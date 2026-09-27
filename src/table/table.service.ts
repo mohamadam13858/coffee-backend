@@ -40,10 +40,12 @@ export class TableService {
 
     async findAllTable() {
         try {
-            return await this.tableRepository.find({
+            const tables = await this.tableRepository.find({
                 order: { number: 'ASC' },
                 where: { isActive: true }
             })
+
+            return tables.map((table) => this.normalizeReservation(table))
         } catch (error) {
             throw new InternalServerErrorException()
         }
@@ -57,7 +59,7 @@ export class TableService {
             throw new NotFoundException('میز پیدا نشد متاسفانه ')
         }
 
-        return table
+        return this.normalizeReservation(table)
     }
 
 
@@ -114,6 +116,8 @@ export class TableService {
             throw new NotFoundException('میز پیدا نشد')
         }
         table.status = changeStatusDto.status
+        table.reservedUntil = null
+        table.reservedByUserId = null
 
         try {
             return await this.tableRepository.save(table)
@@ -126,16 +130,35 @@ export class TableService {
 
     async findAvailable(): Promise<Table[]> {
         try {
-            return await this.tableRepository.find({
-                where: {
-                    status: TableStatus.AVAILABLE,
-                    isActive: true
-                },
+            const tables = await this.tableRepository.find({
+                where: { isActive: true },
                 order: { number: 'ASC' }
             })
 
+            return tables
+                .map((table) => this.normalizeReservation(table))
+                .filter((table) => table.status === TableStatus.AVAILABLE)
+
         } catch (error) {
             throw new InternalServerErrorException()
+        }
+    }
+
+
+    private normalizeReservation(table: Table): Table {
+        const isExpiredReservation =
+            table.status === TableStatus.RESERVED &&
+            (!table.reservedUntil || table.reservedUntil.getTime() < Date.now())
+
+        if (!isExpiredReservation) {
+            return table
+        }
+
+        return {
+            ...table,
+            status: TableStatus.AVAILABLE,
+            reservedUntil: null,
+            reservedByUserId: null,
         }
     }
 

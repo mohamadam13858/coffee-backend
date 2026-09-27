@@ -15,7 +15,7 @@ export class Table {
     capacity?: number
     @Column({ type: 'timestamptz', nullable: true })
     reservedUntil: Date | null
-    @Column({ nullable: true })
+    @Column({  type: 'uuid' , nullable: true })
     reservedByUserId: string | null
     @Column({ default: true })
     isActive: boolean

@@ -39,13 +39,27 @@ export class OrdersService {
                 throw new NotFoundException('میز پیدا نشد')
             }
 
-
-            if (table.status !== TableStatus.AVAILABLE) {
-                throw new BadRequestException('این میز در حال حاضر ازاد نیست')
-            }
-
             if (table.isActive === false) {
                 throw new BadRequestException('این میز غیر فعال است')
+            }
+
+            const reservationExpired =
+                table.status === TableStatus.RESERVED && (!table.reservedUntil || table.reservedUntil.getTime() < Date.now())
+
+            const isMyActiveReservation =
+                table.status === TableStatus.RESERVED &&
+                table.reservedByUserId === user.id &&
+                !reservationExpired
+
+            const isAvailable = table.status === TableStatus.AVAILABLE
+
+            if (!isAvailable && !isMyActiveReservation) {
+                if (table.status === TableStatus.RESERVED && reservationExpired) {
+                    throw new BadRequestException(
+                        'زمان رزرو این میز به پایان رسیده است، دوباره میز را انتخاب کنید',
+                    )
+                }
+                throw new BadRequestException('این میز در حال حاضر آزاد نیست')
             }
 
             const productIds = items.map((item) => item.productId)
@@ -80,7 +94,7 @@ export class OrdersService {
 
                 if (product.stock < item.quantity) {
                     throw new BadRequestException(
-                        `موجودی محصول کافثی نیست`
+                        `موجودی محصول کافی نیست`
                     )
                 }
                 const unitPrice = Number(product.discountPrice ?? product.price)
@@ -107,29 +121,24 @@ export class OrdersService {
                 tableId
             })
 
-
             const savedOrder = await manager.save(order)
-
 
             const orderItems = orderItemData.map((item) => manager.create(OrderItem, {
                 ...item,
                 orderId: savedOrder.id
             }))
 
-
             await manager.save(orderItems)
-
 
             for (const item of items) {
                 await manager.decrement(Product, { id: item.productId }, 'stock', item.quantity)
             }
 
-
             table.status = TableStatus.OCCUPIED
+            table.reservedByUserId = null
+            table.reservedUntil = null
 
             await manager.save(table)
-
-
 
             const fullOrder = await manager.findOne(Order, {
                 where: { id: savedOrder.id },
@@ -142,19 +151,13 @@ export class OrdersService {
                 }
             })
 
-
             if (!fullOrder) {
                 throw new NotFoundException('سفارش ایجاد شد اما قابل بازیابی نبود')
             }
 
-
             return plainToInstance(OrderResponseDto, fullOrder, {
                 excludeExtraneousValues: true
             })
-
-
-
-
         })
     }
 

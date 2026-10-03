@@ -22,4 +22,4 @@ export class CreateProductDto {
     @IsOptional()
     @IsBoolean()
     isAvailable?: boolean
-}
+} 

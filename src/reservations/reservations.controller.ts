@@ -1,4 +1,4 @@
-import { Controller, Delete, Param, Post, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from 'src/auth/get-user.decorator';
 import { User } from 'src/users/entities/user.entity';
@@ -9,6 +9,11 @@ import { ReservationsService } from './reservations.service';
 @UseGuards(AuthGuard('jwt'))
 export class ReservationsController {
   constructor(private reservationsService: ReservationsService) {}
+
+    @Get('me/table')
+    getMyCurrentTable(@GetUser() user: User) {
+        return this.reservationsService.getMyCurrentTable(user.id);
+    }
 
   @Post('tables/:tableId')
   reserveTable(

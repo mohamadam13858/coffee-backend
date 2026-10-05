@@ -182,7 +182,7 @@ export class OrdersService {
             if (order.status === status) {
                 return {
                     id: order.id,
-                    status: order. status,
+                    status: order.status,
                     tableId: order.tableId,
                     updatedAt: order.updatedAt
                 }
@@ -325,7 +325,7 @@ export class OrdersService {
 
 
 
-    async findOne(id: string) {
+    async findOne(id: string, user: User) {
         const order = await this.orderRepository.findOne({
             where: { id },
             relations: {
@@ -336,11 +336,9 @@ export class OrdersService {
             }
         })
 
-
-        if (!order) {
+        if (!order || !this.canAccessOrder(order, user)) {
             throw new NotFoundException('سفارش پیدا نشد')
         }
-
 
         return plainToInstance(OrderResponseDto, order, {
             excludeExtraneousValues: true
@@ -382,20 +380,25 @@ export class OrdersService {
         };
     }
 
-    async addItem(orderId: string, dto: AddOrderItemDto): Promise<OrderResponseDto> {
+    async addItem(orderId: string, dto: AddOrderItemDto, user: User): Promise<OrderResponseDto> {
         return this.dataSource.transaction(async (manager) => {
             const order = await manager.findOne(Order, {
                 where: { id: orderId },
                 lock: { mode: 'pessimistic_write' }
             })
 
-            if (!order) {
+            if (!order || !this.canAccessOrder(order, user)) {
                 throw new NotFoundException('سفارش پیدا نشد')
             }
 
             if ([OrderStatus.DELIVERED, OrderStatus.CANCELLED].includes(order.status)) {
                 throw new BadRequestException('این سفارش قابل ویرایش نیست')
             }
+
+            if (user.role !== 'admin' && order.status !== OrderStatus.PENDING) {
+                throw new BadRequestException('سفارش تایید شده را نمی‌توان ویرایش کرد')
+            }
+
             const product = await manager.findOne(Product, {
                 where: { id: dto.productId }
             })
@@ -419,15 +422,12 @@ export class OrdersService {
                 }
             })
 
-
-
             if (existingItem) {
                 existingItem.quantity += dto.quantity
                 existingItem.unitPrice = unitPrice
                 existingItem.totalPrice = unitPrice * existingItem.quantity
                 await manager.save(existingItem)
             } else {
-
                 const item = manager.create(OrderItem, {
                     orderId: order.id,
                     productId: product.id,
@@ -451,32 +451,32 @@ export class OrdersService {
                 }
             })
 
-
             return plainToInstance(OrderResponseDto, fullOrder, {
                 excludeExtraneousValues: true
             })
         })
-
-
     }
 
-    async removeItem(orderId: string, itemId: string): Promise<OrderResponseDto> {
+    async removeItem(orderId: string, itemId: string, user: User): Promise<OrderResponseDto> {
         return await this.dataSource.transaction(async (manager) => {
             const order = await manager.findOne(Order, {
                 where: { id: orderId },
                 lock: { mode: 'pessimistic_write' }
             })
 
-            if (!order) {
+            if (!order || !this.canAccessOrder(order, user)) {
                 throw new NotFoundException('سفارش پیدا نشد')
             }
-
 
             if (
                 order.status === OrderStatus.DELIVERED ||
                 order.status === OrderStatus.CANCELLED
             ) {
-                throw new BadRequestException('این سفازش قابل ویرایش نیست')
+                throw new BadRequestException('این سفارش قابل ویرایش نیست')
+            }
+
+            if (user.role !== 'admin' && order.status !== OrderStatus.PENDING) {
+                throw new BadRequestException('سفارش تایید شده را نمی‌توان ویرایش کرد')
             }
 
             const item = await manager.findOne(OrderItem, {
@@ -496,39 +496,31 @@ export class OrdersService {
 
             await manager.remove(item)
 
-
             await this.recalculateOrderTotals(manager, orderId)
-
 
             const fullOrder = await manager.findOne(Order, {
                 where: { id: orderId },
                 relations: {
-                    items: {
-                        product: true
-                    }
-
-                    , table: true
+                    items: { product: true },
+                    table: true
                 }
             })
-
 
             return plainToInstance(OrderResponseDto, fullOrder, {
                 excludeExtraneousValues: true
             })
-
-
         })
     }
 
 
-    async updateItemQuantity(orderId: string, itemId: string, dto: UpdateOrderItemDto): Promise<OrderResponseDto> {
+    async updateItemQuantity(orderId: string, itemId: string, dto: UpdateOrderItemDto, user: User): Promise<OrderResponseDto> {
         return await this.dataSource.transaction(async (manager) => {
             const order = await manager.findOne(Order, {
                 where: { id: orderId },
                 lock: { mode: 'pessimistic_write' }
             })
 
-            if (!order) {
+            if (!order || !this.canAccessOrder(order, user)) {
                 throw new NotFoundException('سفارش پیدا نشد')
             }
 
@@ -537,6 +529,10 @@ export class OrdersService {
                 order.status === OrderStatus.CANCELLED
             ) {
                 throw new BadRequestException('این سفارش قابل ویرایش نیست')
+            }
+
+            if (user.role !== 'admin' && order.status !== OrderStatus.PENDING) {
+                throw new BadRequestException('سفارش تایید شده را نمی‌توان ویرایش کرد')
             }
 
             const item = await manager.findOne(OrderItem, {
@@ -598,6 +594,47 @@ export class OrdersService {
         })
     }
 
+
+    async confirmOrder(id: string, user: User) {
+        return await this.dataSource.transaction(async (manager) => {
+            const order = await manager.findOne(Order, {
+                where: { id },
+                lock: { mode: 'pessimistic_write' }
+            })
+
+            if (!order || !this.canAccessOrder(order, user)) {
+                throw new NotFoundException('سفارش پیدا نشد')
+            }
+
+            if (order.status !== OrderStatus.PENDING) {
+                throw new BadRequestException('این سفارش قابلیت تایید ندارد')
+            }
+
+            const itemsCount = await manager.count(OrderItem, {
+                where: { orderId: id }
+            })
+
+            if (itemsCount === 0) {
+                throw new BadRequestException('سفارش خالی است، ابتدا آیتم اضافه کنید')
+            }
+
+            order.status = OrderStatus.PREPARING
+            const savedOrder = await manager.save(order)
+
+            const fullOrder = await manager.findOne(Order, {
+                where: { id: savedOrder.id },
+                relations: {
+                    items: { product: true },
+                    table: true
+                }
+            })
+
+            return plainToInstance(OrderResponseDto, fullOrder, {
+                excludeExtraneousValues: true
+            })
+        })
+    }
+
     private async recalculateOrderTotals(manager: EntityManager, orderId: string): Promise<void> {
         const result = await manager
             .createQueryBuilder(OrderItem, 'item')
@@ -615,6 +652,11 @@ export class OrdersService {
         order.finalAmount = totalAmount - Number(order.discountAmount || 0)
 
         await manager.save(order)
+    }
+
+
+    private canAccessOrder(order: Order, user: User): boolean {
+        return user.role === 'admin' || order.userId === user.id
     }
 }
 

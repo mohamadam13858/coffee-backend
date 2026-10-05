@@ -30,7 +30,14 @@ export class OrdersController {
     }
 
 
+    @Post(':id/confirm')
+    confirmOrder(@Param('id') id: string, @GetUser() user: User) {
+        return this.ordersService.confirmOrder(id, user)
+    }
+
+
     @Get()
+    @Roles('admin')
     findAll(@Query() filterDto: GetOrdersFilterDto) {
         return this.ordersService.findAll(filterDto)
     }
@@ -46,29 +53,30 @@ export class OrdersController {
 
 
     @Get(':id')
-    findOne(@Param('id') id: string) {
-        return this.ordersService.findOne(id)
+    findOne(@Param('id') id: string, @GetUser() user: User) {
+        return this.ordersService.findOne(id, user)
     }
 
 
-
     @Post(':id/items')
-    addItem(@Param('id') id: string, @Body() addOrderItemDto: AddOrderItemDto) {
-        return this.ordersService.addItem(id, addOrderItemDto)
+    addItem(@Param('id') id: string, @Body() addOrderItemDto: AddOrderItemDto, @GetUser() user: User) {
+        return this.ordersService.addItem(id, addOrderItemDto, user)
     }
 
 
     @Patch(':id/items/:itemId')
-    @Roles('admin')
-    updateItemQuantity(@Param('id') id: string, @Param('itemId') itemId: string, @Body() updateOrderItemDto: UpdateOrderItemDto) {
-        return this.ordersService.updateItemQuantity(id, itemId, updateOrderItemDto)
+    updateItemQuantity(
+        @Param('id') id: string,
+        @Param('itemId') itemId: string,
+        @Body() updateOrderItemDto: UpdateOrderItemDto,
+        @GetUser() user: User,
+    ) {
+        return this.ordersService.updateItemQuantity(id, itemId, updateOrderItemDto, user)
     }
 
 
-
     @Delete(':id/items/:itemId')
-    @Roles('admin')
-    removeItem(@Param('id') id: string, @Param('itemId') itemId: string) {
-        return this.ordersService.removeItem(id, itemId)
+    removeItem(@Param('id') id: string, @Param('itemId') itemId: string, @GetUser() user: User) {
+        return this.ordersService.removeItem(id, itemId, user)
     }
 }
